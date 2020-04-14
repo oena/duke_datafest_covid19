@@ -1,0 +1,39 @@
+---
+title: "Data aggregation, cleaning, and EDA"
+date: "April 14th 2020"
+output: html_notebook
+---
+
+```{r setup, include=FALSE}
+# Resources used: 
+# - https://covid19.healthdata.org/united-states-of-america/california
+
+#library(MazamaSpatialUtils) # EPA access
+#library(PWFSLSmoke) # PM 2.5 data
+library(lubridate) # date utils 
+library(DT) # pretty interactive data tables
+library(tidyverse)
+```
+
+```{r}
+# Read in downloaded EPA data for Arizona 
+az_epa_data <- read_csv("/Users/oana/Documents/github/duke_datafest_covid19/datasets/downloaded_epa_data_04142020.csv") 
+
+
+datatable(head(az_epa_data))
+```
+
+From [this site](covid19.healthdata.org), California's stay at home order was March 19th, 2020. So, let's look at data from then: 
+
+```{r}
+CA_stay_at_home_start_date <- as.Date("03/19/20")
+today <- as.Date("04/14/20") # you can do this automatically, but I forget how
+
+mydates <- interval(start = CA_stay_at_home_start_date, end = today)
+
+az_epa_data %>% 
+  filter(Date %within% mydates)
+```
+
+
+
