@@ -25,10 +25,19 @@ California:
 - Carbon Monoxide data for 2020
 - Covid cases by county
 
-Note. According to [this site](covid19.healthdata.org), California's stay at home order was March 19th, 2020. 
+### Initial import & cleaning (Note that many locations lack PM 2.5 *and* CO data): 
 
 ```{r datasets}
-data_directory <- "/Users/oana/Documents/github/duke_datafest_covid19/datasets"
+data_directory <- "/Users/oana/Documents/github/duke_datafest_covid19/datasets" # change appropriately
+
+# Covid data from NYT: https://github.com/nytimes/covid-19-data 
+covid_by_county_url <- "https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv"
+covid_by_county_dfs <- read_csv(url(covid_by_county_url)) %>% 
+  filter(state %in% c("California", "Arizona")) %>% 
+  mutate_if(is.character, toupper) %>% 
+  rename_all(toupper) %>% 
+  group_by(STATE) %>% # split by state to be able to combine w/EPA data more easily 
+  group_split()
 
 # Arizona EPA data
 az_files <- fs::dir_ls(data_directory, regexp = "ad_viz_plotval_data_AZ*")
@@ -38,7 +47,10 @@ az_df <- az_files %>%
         mutate_if(is.character, toupper)) %>% 
   reduce(full_join, 
          by=c("Date","STATE_CODE", "STATE", "COUNTY_CODE", "COUNTY", "Site ID", "Site Name", "SITE_LATITUDE", "SITE_LONGITUDE", "CBSA_CODE", "CBSA_NAME"), 
-         suffix = c("_co", "_pm25"))
+         suffix = c("_co", "_pm25")) %>% 
+  rename_all(toupper) %>% 
+  mutate_at("DATE", function(x) as.Date(x, format = "%m/%d/%Y")) %>% 
+  left_join(covid_by_county_dfs[[1]], by=c("DATE", "STATE", "COUNTY"))
 
 # California EPA data 
 ca_files <- fs::dir_ls(data_directory, regexp = "ad_viz_plotval_data_CA*")
@@ -48,29 +60,37 @@ ca_df <- ca_files %>%
         mutate_if(is.character, toupper)) %>% 
   reduce(full_join, 
          by=c("Date","STATE_CODE", "STATE", "COUNTY_CODE", "COUNTY", "Site ID", "Site Name", "SITE_LATITUDE", "SITE_LONGITUDE", "CBSA_CODE", "CBSA_NAME"), 
-         suffix = c("_co", "_pm25"))
-
-
-# Covid data from NYT: https://github.com/nytimes/covid-19-data 
-covid_by_county_url <- "https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv"
-covid_by_county_df <- read_csv(url(covid_by_county_url)) %>% 
-  filter(state %in% c("California", "Arizona")) 
+         suffix = c("_co", "_pm25")) %>% 
+  rename_all(toupper) %>% 
+  mutate_at("DATE", function(x) as.Date(x, format = "%m/%d/%Y")) %>% 
+  left_join(covid_by_county_dfs[[2]], by=c("DATE", "STATE", "COUNTY"))
 ```
 
-Look @ data sets:
+### Look @ data sets:
 
 ```{r}
+# A simplified list of columns to look at. I don't know what a lot of them mean so this is just a guess. 
+relevant_initial_cols <- c("DATE", "STATE", "COUNTY", "SITE NAME", "DAILY MAX 8-HOUR CO CONCENTRATION", "DAILY MEAN PM2.5 CONCENTRATION", "CASES", "DEATHS")
 
+#Note. According to [this site](covid19.healthdata.org), California's stay at home order was March 19th, 2020. 
+ca_stay_at_home_start <- as.Date("2020-03-19")
 ```
-
 
 ```{r}
-datatable(covid_by_county_df, filter="top", 
-          caption="COVID Confirmed Cases & Deaths for AZ & CA")
+az_df %>% 
+  select(relevant_initial_cols) %>% 
+  filter(DATE > ca_stay_at_home_start) %>% 
+  datatable(filter="top", 
+            caption="AZ data on CO, PM 2.5, & COVID Cases/Deaths")
 ```
 
-
-## Data cleaning 
+```{r}
+ca_df %>% 
+  select(relevant_initial_cols) %>% 
+  filter(DATE > ca_stay_at_home_start) %>% 
+  datatable(filter="top", 
+            caption="CA data on CO, PM 2.5, & COVID Cases/Deaths")
+```
 
 
 ## Exploratory Data Analysis (EDA)
