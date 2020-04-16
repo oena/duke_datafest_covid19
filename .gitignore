@@ -21,6 +21,7 @@
 .Rproj.user/
 
 # produced vignettes
+*nb.html # since they don't render properly anyway
 vignettes/*.html
 vignettes/*.pdf
 
