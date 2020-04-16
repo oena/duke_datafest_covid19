@@ -5,35 +5,68 @@ output: html_notebook
 ---
 
 ```{r setup, include=FALSE}
-# Resources used: 
-# - https://covid19.healthdata.org/united-states-of-america/california
-
-#library(MazamaSpatialUtils) # EPA access
-#library(PWFSLSmoke) # PM 2.5 data
+library(fs) #file utils
 library(lubridate) # date utils 
 library(DT) # pretty interactive data tables
 library(tidyverse)
 ```
 
-```{r}
-# Read in downloaded EPA data for Arizona 
-az_epa_data <- read_csv("/Users/oana/Documents/github/duke_datafest_covid19/datasets/downloaded_epa_data_04142020.csv") 
+## Datasets used: 
 
+(Obviously can be adjusted)
 
-datatable(head(az_epa_data))
+Arizona: 
+- PM 2.5 data for 2020 
+- Carbon Monoxide data for 2020
+- Covid cases by county
+
+California:
+- PM 2.5 data for 2020 
+- Carbon Monoxide data for 2020
+- Covid cases by county
+
+Note. According to [this site](covid19.healthdata.org), California's stay at home order was March 19th, 2020. 
+
+```{r datasets}
+data_directory <- "/Users/oana/Documents/github/duke_datafest_covid19/datasets"
+fs::dir_ls(data_directory)
+
+# Arizona EPA data
+#az_files <- fs::dir_ls(data_directory, regexp = "ad_viz_plotval_data_AZ*")
+az_df <- az_files %>% 
+  map(read_csv) %>% 
+  map(~ .x %>% 
+        mutate_if(is.character, toupper)) %>% 
+  reduce(full_join, 
+         by=c("Date","STATE_CODE", "STATE", "COUNTY_CODE", "COUNTY", "Site ID", "Site Name", "SITE_LATITUDE", "SITE_LONGITUDE", "CBSA_CODE", "CBSA_NAME"), 
+         suffix = c("_co", "_pm25"))
+az_pm25 <- read_csv("/Users/oana/Documents/github/duke_datafest_covid19/datasets/ad_viz_plotval_data_AZ_pm25_041620.csv")
+names(az_pm25)
+az_co <- read_csv("/Users/oana/Documents/github/duke_datafest_covid19/datasets/ad_viz_plotval_data_AZ_co_041620.csv")
+names(az_co)
+
+# California EPA data 
+
+# Covid data from NYT: https://github.com/nytimes/covid-19-data 
+covid_by_county_url <- "https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv"
+covid_by_county_df <- read_csv(url(covid_by_county_url)) %>% 
+  filter(state %in% c("California", "Arizona")) 
 ```
 
-From [this site](covid19.healthdata.org), California's stay at home order was March 19th, 2020. So, let's look at data from then: 
+Look @ data sets:
 
 ```{r}
-CA_stay_at_home_start_date <- as.Date("03/19/20")
-today <- as.Date("04/14/20") # you can do this automatically, but I forget how
 
-mydates <- interval(start = CA_stay_at_home_start_date, end = today)
-
-az_epa_data %>% 
-  filter(Date %within% mydates)
 ```
 
 
+```{r}
+datatable(covid_by_county_df, filter="top", 
+          caption="COVID Confirmed Cases & Deaths for AZ & CA")
+```
 
+
+## Data cleaning 
+
+
+## Exploratory Data Analysis (EDA)
