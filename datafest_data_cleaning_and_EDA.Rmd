@@ -29,10 +29,9 @@ Note. According to [this site](covid19.healthdata.org), California's stay at hom
 
 ```{r datasets}
 data_directory <- "/Users/oana/Documents/github/duke_datafest_covid19/datasets"
-fs::dir_ls(data_directory)
 
 # Arizona EPA data
-#az_files <- fs::dir_ls(data_directory, regexp = "ad_viz_plotval_data_AZ*")
+az_files <- fs::dir_ls(data_directory, regexp = "ad_viz_plotval_data_AZ*")
 az_df <- az_files %>% 
   map(read_csv) %>% 
   map(~ .x %>% 
@@ -40,12 +39,17 @@ az_df <- az_files %>%
   reduce(full_join, 
          by=c("Date","STATE_CODE", "STATE", "COUNTY_CODE", "COUNTY", "Site ID", "Site Name", "SITE_LATITUDE", "SITE_LONGITUDE", "CBSA_CODE", "CBSA_NAME"), 
          suffix = c("_co", "_pm25"))
-az_pm25 <- read_csv("/Users/oana/Documents/github/duke_datafest_covid19/datasets/ad_viz_plotval_data_AZ_pm25_041620.csv")
-names(az_pm25)
-az_co <- read_csv("/Users/oana/Documents/github/duke_datafest_covid19/datasets/ad_viz_plotval_data_AZ_co_041620.csv")
-names(az_co)
 
 # California EPA data 
+ca_files <- fs::dir_ls(data_directory, regexp = "ad_viz_plotval_data_CA*")
+ca_df <- ca_files %>% 
+  map(read_csv) %>% 
+  map(~ .x %>% 
+        mutate_if(is.character, toupper)) %>% 
+  reduce(full_join, 
+         by=c("Date","STATE_CODE", "STATE", "COUNTY_CODE", "COUNTY", "Site ID", "Site Name", "SITE_LATITUDE", "SITE_LONGITUDE", "CBSA_CODE", "CBSA_NAME"), 
+         suffix = c("_co", "_pm25"))
+
 
 # Covid data from NYT: https://github.com/nytimes/covid-19-data 
 covid_by_county_url <- "https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv"
