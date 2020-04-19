@@ -1,0 +1,164 @@
+## Exploratory Data Analysis 
+library(ggplot2)
+
+#create smaller datasets for analysis
+az1 = az_df %>% 
+  select(DATE, `DAILY MAX 8-HOUR CO CONCENTRATION`, STATE, COUNTY, 
+         `DAILY MEAN PM2.5 CONCENTRATION`, CASES, DEATHS)
+
+ca1 = ca_df %>% 
+  select(DATE, `DAILY MAX 8-HOUR CO CONCENTRATION`, STATE, COUNTY, 
+          `DAILY MEAN PM2.5 CONCENTRATION`, CASES, DEATHS)
+
+#merge datasets
+combined = bind_rows(ca1,az1)
+
+#exclude rows with NA in Daily mean PM2.5
+combined1 = combined %>% drop_na(`DAILY MEAN PM2.5 CONCENTRATION`)
+View(combined2)
+
+#calculate weekly avg of pm2.5
+combined2 = combined1 %>% 
+  group_by(STATE, week = week(DATE)) %>%
+  mutate(pm.wk.average = mean(`DAILY MEAN PM2.5 CONCENTRATION`)) %>%
+  ungroup() %>%
+  group_by(month = month(DATE)) %>%
+  mutate(pm.mo.average = mean(`DAILY MEAN PM2.5 CONCENTRATION`)) %>%
+  ungroup() %>%
+  group_by(year = year(DATE)) %>%
+  mutate(pm.year.average = mean(`DAILY MEAN PM2.5 CONCENTRATION`))
+
+
+#Graph1
+#graph of weekly average PM2.5 in Arizona and California
+ggplot(data=combined2, aes(x=week, y=pm.wk.average, color=STATE))+
+  geom_point()+
+  geom_line()+
+  theme_classic()+
+  xlab("Week-Starting 1/1/2020")+
+  ylab("Avg PM2.5 (UG/M3 LC)")+
+  ggtitle("Weekly Average PM2.5 by State in 2020")+
+  geom_vline(xintercept=12, linetype="dashed") #line to indicate CA stay at home order
+
+
+###----------------
+#create the same graph for Daily Max CO
+#exclude rows with NA in Daily MAX CO
+combined11 = combined %>% drop_na(`DAILY MAX 8-HOUR CO CONCENTRATION`)
+
+#calculate weekly avg of CO
+combined21 = combined11 %>% 
+  group_by(STATE, week = week(DATE)) %>%
+  mutate(co.wk.average = mean(`DAILY MAX 8-HOUR CO CONCENTRATION`)) %>%
+  ungroup() %>%
+  group_by(month = month(DATE)) %>%
+  mutate(co.mo.average = mean(`DAILY MAX 8-HOUR CO CONCENTRATION`)) %>%
+  ungroup() %>%
+  group_by(year = year(DATE)) %>%
+  mutate(co.year.average = mean(`DAILY MAX 8-HOUR CO CONCENTRATION`))
+
+#Graph2
+#graph of weekly average CO in Arizona and California
+ggplot(data=combined21, aes(x=week, y=co.wk.average, color=STATE))+
+  geom_point()+
+  geom_line()+
+  theme_classic()+
+  xlab("Week-Starting 1/1/2020")+
+  ylab("Avg Max 8-Hour CO")+
+  ggtitle("Average Max 8-Hour CO by State in 2020") +
+  geom_vline(xintercept=12, linetype="dashed") #line to indicate CA stay at home order
+#not enough ca data for CO
+
+#----------------------------------------------------------------------------------
+#graph cases by state
+
+#calculate weekly sum of cases
+
+#create dataset with cases/deaths by date and state/county
+combined_cases = combined %>% 
+  mutate(week=week(DATE)) %>%
+  select(DATE, week, STATE, COUNTY, CASES, DEATHS)
+
+#delete duplicates 
+combined_cases1 = unique(combined_cases)
+
+#change NA to 0's
+combined_cases2 = combined_cases1 %>% 
+    mutate(CASES = replace_na(CASES, 0)) %>%
+    mutate(DEATHS = replace_na(DEATHS, 0)) 
+
+#indicate the largest case value by state/county/week, then sum by state/week
+combined_cases3 = combined_cases2 %>% 
+  group_by(STATE, COUNTY, week) %>% 
+  summarise(max_case = max(CASES)) %>%
+  ungroup() %>%
+  group_by(STATE, week) %>%
+  summarise(sum_cases =sum(max_case))
+
+#Graph3
+#graph of weekly cases by state
+ggplot(data=combined_cases3, aes(x=week, y=sum_cases, color=STATE))+
+  geom_point()+
+  geom_line()+
+  theme_classic()+
+  xlab("Week-Starting 1/1/2020")+
+  ylab("Cumulative Cases")+
+  ggtitle("Cumulative COVID-19 Cases by State in 2020") +
+  geom_vline(xintercept=12, linetype="dashed") #line to indicate CA stay at home order
+
+##---------
+#combine p2.5 data and cases data
+
+combined_2_new = combined2 %>% select(STATE, week, pm.wk.average)
+
+combined_2_graph = left_join(combined_2_new, combined_cases3, by=c('STATE','week'))
+
+
+######
+#Graph4
+#Add cases as second axis to first graph
+coeff = 1600
+
+ggplot(data=combined_2_graph, aes(x=week)) +
+  
+  geom_line(aes(y=pm.wk.average, color=STATE)) + 
+  geom_line(aes(y=sum_cases / coeff, color=STATE))+
+  
+  
+  scale_y_continuous(
+    #first axis
+    name = "Avg PM2.5 (UG/M3 LC)",
+    #second axis
+    sec.axis = sec_axis(~.*coeff, name="Cumulative Cases")
+  ) +
+  xlab("Week-Starting 1/1/2020")+
+  ggtitle("Weekly Average PM2.5 by State in 2020 (with COVID-19 Cases)") +
+  theme_classic()+
+  geom_vline(xintercept=12, linetype="dashed") #line to indicate CA stay at home order
+
+
+##-----------
+#combine CO data and cases data
+
+combined_21_new = combined21 %>% select(STATE, week, co.wk.average)
+
+combined_21_graph = left_join(combined_21_new, combined_cases3, by=c('STATE','week'))
+
+##Graph5
+coeff = 1600
+ggplot(data=combined_21_graph, aes(x=week)) +
+  
+  geom_line(aes(y=co.wk.average, color=STATE)) + 
+  geom_line(aes(y=sum_cases / coeff, color=STATE))+
+  
+  
+  scale_y_continuous(
+    #first axis
+    name = "Avg Max 8-Hour CO",
+    #second axis
+    sec.axis = sec_axis(~.*coeff, name="Cumulative Cases")
+  ) +
+  xlab("Week-Starting 1/1/2020")+
+  theme_classic()+
+  geom_vline(xintercept=12, linetype="dashed")+ #line to indicate CA stay at home order
+  ggtitle("Average Max 8-Hour CO by State in 2020 (with COVID-19 Cases)")
