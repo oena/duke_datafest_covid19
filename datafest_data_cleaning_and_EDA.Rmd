@@ -102,6 +102,10 @@ library(mapdata)
 library(ggthemes)
 library(gganimate)
 library(gifski)
+library(viridis)
+
+# hopefully more steps in color scale
+custom_colors <- viridis(10)
 
 az_after_stay_at_home <- az_df %>% 
   filter(DATE > ca_stay_at_home_start) 
@@ -120,9 +124,8 @@ az_map_plot <- ggplot() +
              alpha=0.8,
              pch=21) + 
   #transition_time(DATE) + 
-  scale_fill_viridis_b(option="magma", 
-                       direction = 1,
-                           name = "Natural log of daily mean PM 2.5 Concentration",
+  scale_fill_gradientn(colours=custom_colors,
+        name = "Daily mean PM 2.5 Concentration",
     guide = guide_colorbar(
       direction = "horizontal",
       barheight = unit(2, units = "mm"),
@@ -146,10 +149,51 @@ animate(az_map_plot,
         fps=2)
 ```
 
-```{r}
-az_map_ani <- az_map_plot + 
-  transition_manual(DATE) 
-animate(az_map_ani, renderer=gifski_renderer())
-```
+Look at AZ & CA together
 
+```{r}
+states <- map_data("state")
+az_and_ca <- subset(states, region %in% c("california", "arizona"))
+
+ca_after_stay_at_home <- ca_df %>% 
+  filter(DATE > ca_stay_at_home_start) 
+
+combined_after_stay_at_home <- ca_after_stay_at_home %>% 
+  full_join(az_after_stay_at_home) 
+
+combined_map_plot <- ggplot() + 
+  geom_polygon(data=az_and_ca, aes(x=long, y = lat, group = group), fill="lightgrey", color="white") +
+  coord_fixed(1.3) +
+  geom_point(data= combined_after_stay_at_home, 
+             aes(x=SITE_LONGITUDE, y=SITE_LATITUDE, 
+                 size=40, 
+                 fill=`DAILY MEAN PM2.5 CONCENTRATION`),
+             colour="black",
+             alpha=0.8,
+             pch=21) + 
+  #transition_time(DATE) + 
+  scale_fill_gradientn(colours=custom_colors,
+        name = "Daily mean PM 2.5 Concentration",
+    guide = guide_colorbar(
+      direction = "horizontal",
+      barheight = unit(2, units = "mm"),
+      barwidth = unit(50, units = "mm"),
+      draw.ulim = F,
+      title.position = 'top',
+      # some shifting around
+      title.hjust = 0.5,
+      label.hjust = 0.5
+  )) + 
+  labs(title="PM 2.5 levels: {closest_state}") + 
+  theme_map() + 
+  guides(size=FALSE) + 
+  theme(legend.position="bottom") + 
+  transition_states(DATE, 
+                    transition_length=3,
+                    state_length = 20) + 
+  view_follow()
+animate(combined_map_plot, 
+        renderer=gifski_renderer(),
+        fps=2)
+```
 
