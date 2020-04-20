@@ -94,3 +94,62 @@ ca_df %>%
 
 
 ## Exploratory Data Analysis (EDA)
+
+```{r}
+library(maps)
+library(ggmap)
+library(mapdata)
+library(ggthemes)
+library(gganimate)
+library(gifski)
+
+az_after_stay_at_home <- az_df %>% 
+  filter(DATE > ca_stay_at_home_start) 
+  #filter(DATE == "2020-04-15")
+
+az_map <- map_data("county", "arizona")
+
+az_map_plot <- ggplot() + 
+  geom_polygon(data=az_map, aes(x=long, y = lat, group = group), fill="lightgrey", color="white") +
+  coord_fixed(1.3) + 
+  geom_point(data= az_after_stay_at_home, 
+             aes(x=SITE_LONGITUDE, y=SITE_LATITUDE, 
+                 size=40, 
+                 fill=`DAILY MEAN PM2.5 CONCENTRATION`),
+             colour="black",
+             alpha=0.8,
+             pch=21) + 
+  #transition_time(DATE) + 
+  scale_fill_viridis_b(option="magma", 
+                       direction = 1,
+                           name = "Natural log of daily mean PM 2.5 Concentration",
+    guide = guide_colorbar(
+      direction = "horizontal",
+      barheight = unit(2, units = "mm"),
+      barwidth = unit(50, units = "mm"),
+      draw.ulim = F,
+      title.position = 'top',
+      # some shifting around
+      title.hjust = 0.5,
+      label.hjust = 0.5
+  )) + 
+  labs(title="Arizona PM 2.5 levels: {closest_state}") + 
+  theme_map() + 
+  guides(size=FALSE) + 
+  theme(legend.position="bottom") + 
+  transition_states(DATE, 
+                    transition_length=3,
+                    state_length = 20) + 
+  view_follow()
+animate(az_map_plot, 
+        renderer=gifski_renderer(),
+        fps=2)
+```
+
+```{r}
+az_map_ani <- az_map_plot + 
+  transition_manual(DATE) 
+animate(az_map_ani, renderer=gifski_renderer())
+```
+
+
