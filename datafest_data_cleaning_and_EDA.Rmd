@@ -1,7 +1,11 @@
 ---
 title: "Data aggregation, cleaning, and EDA"
+output:
+  html_document:
+    df_print: paged
+  html_notebook: default
+  pdf_document: default
 date: "April 14th 2020"
-output: html_notebook
 ---
 
 ```{r setup, include=FALSE}
@@ -28,7 +32,7 @@ California:
 ### Initial import & cleaning (Note that many locations lack PM 2.5 *and* CO data): 
 
 ```{r datasets}
-data_directory <- "/Users/oana/Documents/github/duke_datafest_covid19/datasets" # change appropriately
+data_directory <- "/Users/elizabethhaderer/Documents/github/duke_datafest_covid19/datasets" # change appropriately
 
 # Covid data from NYT: https://github.com/nytimes/covid-19-data 
 covid_by_county_url <- "https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv"
@@ -93,4 +97,54 @@ ca_df %>%
 ```
 
 
-## Exploratory Data Analysis (EDA)
+
+##Comparing Pre & Post Shut Down
+
+California Shut Down Date: 03/19/2020
+Pre Shut Down Date Subset:03/05/2020-3/19/2020
+Post Shut Down Date Subset : 3/20/2020-4/4/2020
+
+Assumptions: PM 2.5 measurements are independent, and each day's mean is a representative sample for that region so we will treat as a random sample.
+
+Arizona
+
+```{r az}
+#Subset Pre & Post and calculate mean PM 2.5 for that date range
+az_pre <- subset(az_df, DATE > "2020-02-18" & DATE < "2020-03-20")
+
+az_pre_mean <- mean(az_pre$`DAILY MEAN PM2.5 CONCENTRATION`)
+
+az_post <- subset(az_df, DATE> "2020-03-19" & DATE < "2020-04-21")
+
+az_post_mean <- mean(az_post$`DAILY MEAN PM2.5 CONCENTRATION`)
+#Conduct a t.test to see if there is a significant difference
+
+var.test(az_pre$`DAILY MEAN PM2.5 CONCENTRATION`, az_post$`DAILY MEAN PM2.5 CONCENTRATION`)
+
+t.test(az_pre$`DAILY MEAN PM2.5 CONCENTRATION`, az_post$`DAILY MEAN PM2.5 CONCENTRATION`, var.equal = FALSE)
+
+
+```
+
+
+California
+```{r ca}
+#Subset Pre & Post PM 2.5 for that date range
+ca_pre <- subset(ca_df, DATE > "2020-02-18" & DATE < "2020-03-20")
+
+ca_pre_mean <- mean(ca_pre$`DAILY MEAN PM2.5 CONCENTRATION`)
+
+ca_post <- subset(ca_df, DATE> "2020-03-19" & DATE < "2020-04-21")
+
+ca_post_mean <- mean(ca_post$`DAILY MEAN PM2.5 CONCENTRATION`)
+
+#Conduct a t.test to see if there is a significant difference
+
+var.test(ca_pre$`DAILY MEAN PM2.5 CONCENTRATION`, ca_post$`DAILY MEAN PM2.5 CONCENTRATION`)
+
+t.test(ca_pre$`DAILY MEAN PM2.5 CONCENTRATION`, ca_post$`DAILY MEAN PM2.5 CONCENTRATION`, var.equal = FALSE)
+
+
+
+```
+```
