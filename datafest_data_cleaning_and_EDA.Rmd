@@ -147,4 +147,71 @@ t.test(ca_pre$`DAILY MEAN PM2.5 CONCENTRATION`, ca_post$`DAILY MEAN PM2.5 CONCEN
 
 
 ```
+
+
+### Animation of PM 2.5 values in CA and AZ 
+
+```{r}
+### Setup for animation ###
+
+library(maps)
+library(ggmap)
+library(mapdata)
+library(ggthemes)
+library(gganimate)
+library(gifski)
+library(viridis)
+
+# Add more steps to color scale 
+custom_colors <- viridis(20)
+
+combined_ca_az <- az_df %>% 
+  full_join(ca_df) %>% 
+  select(DATE,SITE_LONGITUDE, SITE_LATITUDE, `DAILY MEAN PM2.5 CONCENTRATION`, STATE) %>% 
+  filter(`DAILY MEAN PM2.5 CONCENTRATION` < 50) # remove outlier points just from visualization because they skew the color scale too much 
+
+# Define plot 
+combined_map_plot <- ggplot() + 
+  geom_polygon(data=az_and_ca, aes(x=long, y = lat, group = group), 
+               fill="lightgrey", color="white") +
+  coord_fixed(1.3) +
+  geom_point(data= combined_ca_az, 
+             aes(x=SITE_LONGITUDE, y=SITE_LATITUDE, 
+                 size=40, 
+                 fill=`DAILY MEAN PM2.5 CONCENTRATION`),
+             colour="black",
+             alpha=0.8,
+             pch=21) + 
+  scale_fill_gradientn(colours=custom_colors,
+        name = "Daily mean PM 2.5 Concentration",
+    guide = guide_colorbar(
+      direction = "horizontal",
+      barheight = unit(5, units = "mm"),
+      barwidth = unit(50, units = "mm"),
+      draw.ulim = F,
+      title.position = 'top',
+      # some shifting around
+      title.hjust = 0.5,
+      label.hjust = 0.5
+  )) + 
+  labs(title="PM 2.5 levels: {closest_state}") + 
+  theme_map() + 
+  guides(size=FALSE) + 
+  theme(legend.position="bottom", 
+        plot.title = element_text(size=27),
+        legend.title = element_text(size=16),
+        legend.text = element_text(size=16)) + 
+  transition_states(DATE, transition_length=1, state_length =1) 
+
+# animate plot by date 
+animate(combined_map_plot, 
+        nframes=300,
+        renderer=gifski_renderer())
 ```
+
+```{r}
+# Save plot to gif 
+anim_save("ca_and_az_animation.gif", 
+          animation = last_animation())
+```
+
